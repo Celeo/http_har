@@ -57,11 +57,10 @@ proc convert*(request: Request): JsonNode =
     "queryString": convertQueryString(request.url)
   }
   if request.body.len() > 0:
-    # TODO
     result["postData"] = %*{
-      "mimeType": "",
-      "params": "",
-      "text": ""
+      "mimeType": request.headers.table.getOrDefault("content-type", @[""]).join("; "),
+      "params": [],
+      "text": request.body
     }
 
 proc convert*(response: Response): JsonNode =
@@ -72,12 +71,11 @@ proc convert*(response: Response): JsonNode =
     "headers": convertHeaders(response.headers),
     "headersSize": -1,
     "cookies": convertCookies(response.headers),
-    # TODO
     "content": {
-      "size": 0,
+      "size": response.body.len(),
       "compression": 0,
-      "mimeType": "",
-      "text": ""
+      "mimeType": response.headers.table.getOrDefault("content-type", @[""]).join("; "),
+      "text": response.body
     },
     "bodySize": response.body.len(),
     "redirectURL": ""
@@ -96,5 +94,5 @@ proc convert*(request: Request, response: Response): string =
       "receive": 0,
     }
   }
-  data["entries"].add(entry)
+  data["log"]["entries"].add(entry)
   $data
