@@ -13,4 +13,4 @@ jobs:
         nim-version: stable
     - uses: actions/checkout@v1
     - run: |
-        nimble test
+        nimble test -y
