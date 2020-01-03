@@ -5,3 +5,4 @@ license       = "MIT"
 srcDir        = "src"
 
 requires "nim >= 1.0.4"
+requires "https://github.com/celeo/expect-nim.git"

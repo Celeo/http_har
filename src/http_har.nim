@@ -2,10 +2,13 @@ import asynchttpserver,
   httpclient,
   httpcore,
   json,
+  sequtils,
   strutils,
-  times
+  tables,
+  times,
+  uri
 
-proc start(): JsonNode =
+proc start*(): JsonNode =
   %*{
     "log": {
       "version": "1.2",
@@ -17,40 +20,66 @@ proc start(): JsonNode =
     }
   }
 
-proc convertHeaders(headers: HttpHeaders): (seq[JsonNode], int) =
-  var headers: seq[JsonNode] = @[]
+proc convertHeaders*(headers: HttpHeaders): seq[JsonNode] =
   for (k, v) in headers.pairs():
-    headers.add(%*{
+    result.add(%*{
       "name": k,
       "value": v
     })
-  # TODO calculate size
-  (headers, 0)
+
+proc convertCookies*(headers: HttpHeaders): seq[JsonNode] =
+  let cookies = headers.table.getOrDefault("cookie", @[])
+  for val in cookies:
+    for cookie in val.split(';'):
+      let parts = cookie.split('=')
+      result.add(%*{
+        "name": parts[0].strip(),
+        "value": parts[1].strip()
+      })
+
+proc convertQueryString*(uri: Uri): seq[JsonNode] =
+  uri.query.split("&")
+    .mapIt(it.split('='))
+    .mapIt(%*{
+      "name": it[0],
+      "value": it[1]
+    })
 
 proc convert*(request: Request): JsonNode =
-  let (headers, headerSize) = convertHeaders(request.headers)
-  %*{
+  result = %*{
     "bodySize": request.body.len(),
     "method": $request.reqMethod,
     "url": $request.url,
-    "httpVersion": "HTTP/1.1",
-    "headers": headers,
-    "headersSize": headerSize,
-    "cookies": [], # TODO
-    "queryString": [] # TODO, data in 'request.query'
+    "httpVersion": request.protocol.orig,
+    "headers": convertHeaders(request.headers),
+    "headersSize": -1,
+    "cookies": convertCookies(request.headers),
+    "queryString": convertQueryString(request.url)
   }
+  if request.body.len() > 0:
+    # TODO
+    result["postData"] = %*{
+      "mimeType": "",
+      "params": "",
+      "text": ""
+    }
 
 proc convert*(response: Response): JsonNode =
-  let (headers, headerSize) = convertHeaders(response.headers)
   %*{
     "status": response.status.parseInt(),
     "statusText": ($response.code()).split(" ")[1..^1].join(" "),
     "httpVersion": "HTTP/1.1",
-    "headers": headers,
-    "headersSize": headerSize,
-    "cookies": [], # TODO
-    "content": {}, # TODO
-    "bodySize": 0, # TODO
+    "headers": convertHeaders(response.headers),
+    "headersSize": -1,
+    "cookies": convertCookies(response.headers),
+    # TODO
+    "content": {
+      "size": 0,
+      "compression": 0,
+      "mimeType": "",
+      "text": ""
+    },
+    "bodySize": response.body.len(),
     "redirectURL": ""
   }
 
