@@ -1,4 +1,6 @@
-import asynchttpserver,
+import
+  asyncdispatch,
+  asynchttpserver,
   httpclient,
   httpcore,
   json,
@@ -81,6 +83,25 @@ proc convert*(response: Response): JsonNode =
     "redirectURL": ""
   }
 
+proc convertAsync*(response: AsyncResponse): Future[JsonNode] {.async.} =
+  let body = await response.body
+  result = %*{
+    "status": response.status.parseInt(),
+    "statusText": ($response.code()).split(" ")[1..^1].join(" "),
+    "httpVersion": "HTTP/1.1",
+    "headers": convertHeaders(response.headers),
+    "headersSize": -1,
+    "cookies": convertCookies(response.headers),
+    "content": {
+      "size": body.len(),
+      "compression": 0,
+      "mimeType": response.headers.table.getOrDefault("content-type", @[""]).join("; "),
+      "text": body
+    },
+    "bodySize": body.len(),
+    "redirectURL": ""
+  }
+
 proc convert*(request: Request, response: Response): string =
   var data = start()
   var entry = %*{
@@ -96,3 +117,19 @@ proc convert*(request: Request, response: Response): string =
   }
   data["log"]["entries"].add(entry)
   $data
+
+proc convertAsync*(request: Request, response: AsyncResponse): Future[string] {.async.} =
+  var data = start()
+  var entry = %*{
+    "startedDateTime": now().format("yyyy-MM-dd'T'hh:mm:ss'.0'zzz"),
+    "request": convert(request),
+    "response": await convertAsync(response),
+    "cache": {},
+    "timings": {
+      "send": 0,
+      "wait": 0,
+      "receive": 0,
+    }
+  }
+  data["log"]["entries"].add(entry)
+  result = $data
