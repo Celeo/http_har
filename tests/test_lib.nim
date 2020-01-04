@@ -22,7 +22,7 @@ proc getRequest(): Request =
 proc getResponse(): Response =
   result = Response()
   result.version = "HTTP/1.1"
-  result.status = "200"
+  result.status = "200 OK"
   result.headers = newHttpHeaders()
   result.headers.add("content-type", "application/json")
   result.bodyStream = newStringStream("'Hello world'")
@@ -31,7 +31,7 @@ proc getAsyncResponse(): AsyncResponse =
   echo "getAsyncResponse()"
   result = AsyncResponse()
   result.version = "HTTP/1.1"
-  result.status = "200"
+  result.status = "200 OK"
   result.headers = newHttpHeaders()
   result.headers.add("content-type", "application/json")
   result.bodyStream = newFutureStream[string]()

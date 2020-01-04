@@ -40,12 +40,13 @@ proc convertCookies*(headers: HttpHeaders): seq[JsonNode] =
       })
 
 proc convertQueryString*(uri: Uri): seq[JsonNode] =
-  uri.query.split("&")
-    .mapIt(it.split('='))
-    .mapIt(%*{
-      "name": it[0],
-      "value": it[1]
-    })
+  if uri.query != "":
+    result = uri.query.split("&")
+      .mapIt(it.split('='))
+      .mapIt(%*{
+        "name": it[0],
+        "value": it[1]
+      })
 
 proc convert*(request: Request): JsonNode =
   result = %*{
@@ -67,8 +68,8 @@ proc convert*(request: Request): JsonNode =
 
 proc convert*(response: Response): JsonNode =
   %*{
-    "status": response.status.parseInt(),
-    "statusText": ($response.code()).split(" ")[1..^1].join(" "),
+    "status": response.status[0..2].parseInt(),
+    "statusText": response.status[4..^1],
     "httpVersion": "HTTP/1.1",
     "headers": convertHeaders(response.headers),
     "headersSize": -1,
@@ -86,8 +87,8 @@ proc convert*(response: Response): JsonNode =
 proc convertAsync*(response: AsyncResponse): Future[JsonNode] {.async.} =
   let body = await response.body()
   result = %*{
-    "status": response.status.parseInt(),
-    "statusText": ($response.code()).split(" ")[1..^1].join(" "),
+    "status": response.status[0..2].parseInt(),
+    "statusText": response.status[4..^1],
     "httpVersion": "HTTP/1.1",
     "headers": convertHeaders(response.headers),
     "headersSize": -1,
