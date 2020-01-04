@@ -84,7 +84,7 @@ proc convert*(response: Response): JsonNode =
   }
 
 proc convertAsync*(response: AsyncResponse): Future[JsonNode] {.async.} =
-  let body = await response.body
+  let body = await response.body()
   result = %*{
     "status": response.status.parseInt(),
     "statusText": ($response.code()).split(" ")[1..^1].join(" "),

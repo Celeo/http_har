@@ -28,12 +28,15 @@ proc getResponse(): Response =
   result.bodyStream = newStringStream("'Hello world'")
 
 proc getAsyncResponse(): AsyncResponse =
+  echo "getAsyncResponse()"
   result = AsyncResponse()
   result.version = "HTTP/1.1"
   result.status = "200"
   result.headers = newHttpHeaders()
   result.headers.add("content-type", "application/json")
-  result.bodyStream = newFutureStream[string]("'Hello world'")
+  result.bodyStream = newFutureStream[string]()
+  waitFor result.bodyStream.write("'Hello world'")
+  result.bodyStream.complete()
 
 suite "common":
 
@@ -89,16 +92,16 @@ suite "sync":
     check:
       "log" in asJson
 
-suite "async":
+suite "asyadsfasdffadsnc":
 
   test "convertResponse - response, async":
-    # FIXME this line is throwing an exception
-    let converted: JsonNode = waitFor(convertAsync(getAsyncResponse()))
-
-    echo converted
-
-    # ...
+    let converted = waitFor(convertAsync(getAsyncResponse()))
+    let expected = parseJson("""{"status":200,"statusText":"OK","httpVersion":"HTTP/1.1","headers":[{"name":"content-type","value":"application/json"}],"headersSize":-1,"cookies":[],"content":{"size":13,"compression":0,"mimeType":"application/json","text":"'Hello world'"},"bodySize":13,"redirectURL":""}""")
+    check:
+      converted == expected
 
   test "convert - request and response, async":
-    # TODO
-    discard
+    let converted = waitFor(convertAsync(getRequest(), getAsyncResponse()))
+    let asJson = parseJson(converted)
+    check:
+      "log" in asJson
