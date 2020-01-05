@@ -11,6 +11,7 @@ import
   uri
 
 proc start*(): JsonNode =
+  ## Start the HAR data.
   %*{
     "log": {
       "version": "1.2",
@@ -23,6 +24,7 @@ proc start*(): JsonNode =
   }
 
 proc convertHeaders*(headers: HttpHeaders): seq[JsonNode] =
+  ## Convert headers from a `Request` or `(Async)Response` into `JsonNode`s.
   for (k, v) in headers.pairs():
     result.add(%*{
       "name": k,
@@ -30,6 +32,7 @@ proc convertHeaders*(headers: HttpHeaders): seq[JsonNode] =
     })
 
 proc convertCookies*(headers: HttpHeaders): seq[JsonNode] =
+  ## Convert cookies from headers from a `Request` or `(Async)Response` into `JsonNode`s.
   let cookies = headers.table.getOrDefault("cookie", @[])
   for val in cookies:
     for cookie in val.split(';'):
@@ -40,6 +43,7 @@ proc convertCookies*(headers: HttpHeaders): seq[JsonNode] =
       })
 
 proc convertQueryString*(uri: Uri): seq[JsonNode] =
+  ## Convert query params into `JsonNode`s.
   if uri.query != "":
     result = uri.query.split("&")
       .mapIt(it.split('='))
@@ -49,6 +53,7 @@ proc convertQueryString*(uri: Uri): seq[JsonNode] =
       })
 
 proc convert*(request: Request): JsonNode =
+  ## Convert a `Request` into a `JsonNode`.
   result = %*{
     "bodySize": request.body.len(),
     "method": $request.reqMethod,
@@ -67,6 +72,7 @@ proc convert*(request: Request): JsonNode =
     }
 
 proc convert*(response: Response): JsonNode =
+  ## Convert a `Response` into a `JsonNode`.
   %*{
     "status": response.status[0..2].parseInt(),
     "statusText": response.status[4..^1],
@@ -85,6 +91,13 @@ proc convert*(response: Response): JsonNode =
   }
 
 proc convertAsync*(response: AsyncResponse): Future[JsonNode] {.async.} =
+  ## Convert a `AsyncResponse` into a `JsonNode`.
+  ##
+  ## Since this object is asynchronous in design, this method is also
+  ## async so that the data can be processed asynchronously. You'll need
+  ## to handle this implementing in your application, whether that's
+  ## `await`ing the call to this proc, or adding a `waitFor` if not in
+  ## asnychronous environment.
   let body = await response.body()
   result = %*{
     "status": response.status[0..2].parseInt(),
@@ -104,6 +117,7 @@ proc convertAsync*(response: AsyncResponse): Future[JsonNode] {.async.} =
   }
 
 proc convert*(request: Request, response: Response): string =
+  ## Convert a `Request` and `Response`.
   var data = start()
   var entry = %*{
     "startedDateTime": now().format("yyyy-MM-dd'T'hh:mm:ss'.0'zzz"),
@@ -120,6 +134,9 @@ proc convert*(request: Request, response: Response): string =
   $data
 
 proc convertAsync*(request: Request, response: AsyncResponse): Future[string] {.async.} =
+  ## Convert a `Request` and `AsyncResponse`.
+  ##
+  ## See the notes on the `convertAsync` proc for more information.
   var data = start()
   var entry = %*{
     "startedDateTime": now().format("yyyy-MM-dd'T'hh:mm:ss'.0'zzz"),
